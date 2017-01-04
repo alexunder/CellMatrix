@@ -19,6 +19,7 @@
 #include <linux/err.h>
 #include <linux/ctype.h>
 #include <linux/leds.h>
+#include <linux/dev_namespace.h>
 #include "leds.h"
 
 static struct class *leds_class;
@@ -48,8 +49,15 @@ static ssize_t led_brightness_store(struct device *dev,
 	ssize_t ret = -EINVAL;
 
 	ret = kstrtoul(buf, 10, &state);
+
 	if (ret)
 		return ret;
+
+	if (!is_active_dev_ns(current_dev_ns())) {
+		printk(KERN_INFO "led_brightness: not setting %s to %ld from inactive container.\n",
+		       dev_name(dev), state);
+		return -EINVAL;
+	}
 
 	if (state == LED_OFF)
 		led_trigger_remove(led_cdev);
