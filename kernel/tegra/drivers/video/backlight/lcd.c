@@ -16,6 +16,7 @@
 #include <linux/err.h>
 #include <linux/fb.h>
 #include <linux/slab.h>
+#include <linux/dev_namespace.h>
 
 #if defined(CONFIG_FB) || (defined(CONFIG_FB_MODULE) && \
 			   defined(CONFIG_LCD_CLASS_DEVICE_MODULE))
@@ -118,6 +119,13 @@ static ssize_t lcd_store_power(struct device *dev,
 
 	rc = -ENXIO;
 
+	if (!is_active_dev_ns(current_dev_ns())) {
+		printk(KERN_INFO "%s: not setting %s power to %d from inactive devns\n",
+		       __func__, dev_name(dev), power);
+		rc = count;
+		goto out;
+	}
+
 	mutex_lock(&ld->ops_lock);
 	if (ld->ops && ld->ops->set_power) {
 		pr_debug("set power to %lu\n", power);
@@ -126,6 +134,7 @@ static ssize_t lcd_store_power(struct device *dev,
 	}
 	mutex_unlock(&ld->ops_lock);
 
+ out:
 	return rc;
 }
 
@@ -156,6 +165,13 @@ static ssize_t lcd_store_contrast(struct device *dev,
 
 	rc = -ENXIO;
 
+	if (!is_active_dev_ns(current_dev_ns())) {
+		printk(KERN_INFO "%s: not setting %s contrast to %d from inactive devn.\n",
+		       __func__, dev_name(dev), contrast);
+		rc = count;
+		goto out;
+	}
+
 	mutex_lock(&ld->ops_lock);
 	if (ld->ops && ld->ops->set_contrast) {
 		pr_debug("set contrast to %lu\n", contrast);
@@ -164,6 +180,7 @@ static ssize_t lcd_store_contrast(struct device *dev,
 	}
 	mutex_unlock(&ld->ops_lock);
 
+ out:
 	return rc;
 }
 

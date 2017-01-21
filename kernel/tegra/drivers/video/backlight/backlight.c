@@ -27,6 +27,7 @@
 #include <linux/err.h>
 #include <linux/fb.h>
 #include <linux/slab.h>
+#include <linux/dev_namespace.h>
 
 #ifdef CONFIG_PMAC_BACKLIGHT
 #include <asm/backlight.h>
@@ -193,6 +194,15 @@ static ssize_t backlight_store_power(struct device *dev,
 		return rc;
 
 	rc = -ENXIO;
+
+	if (!is_active_dev_ns(current_dev_ns())) {
+		printk(KERN_INFO "%s: not setting %s power to %ld from inactive devns\n",
+		       __func__, dev_name(dev), power);
+		rc = count;
+		goto out;
+	}
+
+
 	mutex_lock(&bd->ops_lock);
 	if (bd->ops) {
 		pr_debug("set power to %lu\n", power);
@@ -204,6 +214,7 @@ static ssize_t backlight_store_power(struct device *dev,
 	}
 	mutex_unlock(&bd->ops_lock);
 
+ out:
 	return rc;
 }
 
@@ -228,6 +239,17 @@ static ssize_t backlight_store_brightness(struct device *dev,
 
 	rc = -ENXIO;
 
+	if (!is_active_dev_ns(current_dev_ns())) {
+		printk(KERN_INFO "%s: not setting %s brightness to %ld from inactive devns\n",
+		       __func__, dev_name(dev), brightness);
+		rc = count;
+		/* generate the backlight event in case user space was relying
+		 * on this to happen
+		 */
+		goto out;
+	}
+
+
 	mutex_lock(&bd->ops_lock);
 	if (bd->ops) {
 		if (brightness > bd->props.max_brightness)
@@ -243,6 +265,7 @@ static ssize_t backlight_store_brightness(struct device *dev,
 
 	backlight_generate_event(bd, BACKLIGHT_UPDATE_SYSFS);
 
+ out:
 	return rc;
 }
 
